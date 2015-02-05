@@ -130,7 +130,7 @@
 		extern int checkSHADER ( HRESULT hr, ID3D10Blob* blob );			
 		#define IDX_NULL	0xFFFFFFFF		// DirectX - cut index
 	#else
-		#include "GLEW\glew.h"
+		#include "GLEW/glew.h"
 		typedef	GLuint			BUF;		
 		typedef	GLuint			TEX;
 		extern void checkGL( char* msg );

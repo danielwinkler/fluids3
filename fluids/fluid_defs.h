@@ -47,6 +47,6 @@
 
 	// #define	TEST_PREFIXSUM			// Enable this to make sure CUDA prefix sum is working.
 	// #define	TEST_VALIDATESIM		// Enable this to validate each step of CUDA simulator against CPU version.
-
+#define DWORD unsigned int
 
 #endif

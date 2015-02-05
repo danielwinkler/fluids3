@@ -1006,9 +1006,9 @@ bool nvGui::guiChanged ( int n )
 	return false;
 }
 
-inline float log2 ( double x ) {
-	return log(x)/log(2.0);
-}
+//inline float log2 ( double x ) {
+//	return log(x)/log(2.0);
+//}
 
 void nvGui::Draw ()
 {
@@ -11391,10 +11391,10 @@ std::string Matrix4F::WriteToStr ()
 {
 	char buf[4096];
 	std::string str;
-	sprintf_s ( buf, 4096, "   %f %f %f %f\n", data[0], data[1], data[2], data[3] ); str = buf;
-	sprintf_s ( buf, 4096, "   %f %f %f %f\n", data[4], data[5], data[6], data[7] ); str += buf;
-	sprintf_s ( buf, 4096, "   %f %f %f %f\n", data[8], data[9], data[10], data[11] ); str += buf;
-	sprintf_s ( buf, 4096, "   %f %f %f %f\n", data[12], data[13], data[14], data[15] ); str += buf;
+	snprintf ( buf, 4096, "   %f %f %f %f\n", data[0], data[1], data[2], data[3] ); str = buf;
+	snprintf ( buf, 4096, "   %f %f %f %f\n", data[4], data[5], data[6], data[7] ); str += buf;
+	snprintf ( buf, 4096, "   %f %f %f %f\n", data[8], data[9], data[10], data[11] ); str += buf;
+	snprintf ( buf, 4096, "   %f %f %f %f\n", data[12], data[13], data[14], data[15] ); str += buf;
 	return str;
 }
 

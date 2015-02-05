@@ -46,9 +46,15 @@
 
 #include "app_perf.h"
 
+#ifdef _WIN32
 #include <io.h>
-#include <fcntl.h>	
 #include <conio.h>
+#else
+#include <sys/io.h>
+#endif
+#include <cstdarg>
+#include <cstdlib>
+#include <fcntl.h>
 
 bool				g_perfInit = false;			// Is perf started? Checks for DLL
 bool				g_perfOn = false;			// Is perf on? DLL was found. Otherwise no perf.
@@ -64,99 +70,99 @@ bool				g_perfGPU = true;			// Do GPU timing? Set with PERF_SET
 std::string			g_perfFName = "";			// File name for CPU output. Set with PERF_SET
 FILE*				g_perfFile = 0x0;			// File handle for output
 
-void PERF_PRINTF ( char* format, ... )
-{
-	if ( g_perfCons == 0x0 ) return;
-	va_list argptr;
-	va_start (argptr, format);				
-	vfprintf ( g_perfCons, format, argptr);			
-	va_end (argptr);			
-	fflush ( g_perfCons );
-}
+//void PERF_PRINTF ( char* format, ... )
+//{
+//	if ( g_perfCons == 0x0 ) return;
+//	va_list argptr;
+//	va_start (argptr, format);
+//	vfprintf ( g_perfCons, format, argptr);
+//	va_end (argptr);
+//	fflush ( g_perfCons );
+//}
+//
+//void PERF_PUSH ( const char* msg )
+//{
+//	if ( !g_perfInit ) PERF_INIT ( true );
+//	if ( g_perfOn ) {
+//		if ( g_perfGPU ) (*g_nvtxPush) (msg);
+//		if ( g_perfCPU ) {
+//			strncpy ( (char*) g_perfMsg[ g_perfLevel ], msg, 256 );
+//			g_perfStack [ g_perfLevel ] = Time::GetSystemNSec ();
+//			if ( g_perfLevel < g_perfPrintLev ) {
+//				PERF_PRINTF ( "%*s%s\n", g_perfLevel <<1, "", msg );
+//				if ( g_perfFile != 0x0 ) fprintf ( g_perfFile, "%*s%s\n", g_perfLevel <<1, "", msg );
+//			}
+//		}
+//		g_perfLevel++;
+//	}
+//}
+//float PERF_POP ()
+//{
+//	if ( g_perfOn ) {
+//		if ( g_perfGPU ) (*g_nvtxPop) ();
+//		g_perfLevel--;
+//		if ( g_perfCPU ) {
+//			sjtime curr = Time::GetSystemNSec ();
+//			curr -= g_perfStack [ g_perfLevel ];
+//			float msec = float(curr) / MSEC_SCALAR;
+//			if ( g_perfLevel < g_perfPrintLev ) {
+//				PERF_PRINTF ( "%*s%s: %f ms\n", g_perfLevel <<1, "", g_perfMsg[g_perfLevel], msec );
+//				if ( g_perfFile != 0x0 ) fprintf ( g_perfFile, "%*s%s: %f ms\n", g_perfLevel <<1, "", g_perfMsg[g_perfLevel], msec );
+//			}
+//			return msec;
+//		}
+//	}
+//	return 0.0;
+//}
+//
+//void PERF_SET ( bool cpu, int lev, bool gpu, char* fname )
+//{
+//	g_perfCPU = cpu;
+//	if ( lev == 0 ) lev = 32767;
+//	g_perfPrintLev = lev;
+//	g_perfGPU = gpu;
+//	g_perfFName = fname;
+//	if ( g_perfFName.length() > 0 ) {
+//		if ( g_perfFile == 0x0 ) g_perfFile = fopen ( g_perfFName.c_str(), "wt" );
+//	}
+//}
 
-void PERF_PUSH ( const char* msg )
-{
-	if ( !g_perfInit ) PERF_INIT ( true );
-	if ( g_perfOn ) {
-		if ( g_perfGPU ) (*g_nvtxPush) (msg);
-		if ( g_perfCPU ) {
-			strncpy ( (char*) g_perfMsg[ g_perfLevel ], msg, 256 );
-			g_perfStack [ g_perfLevel ] = Time::GetSystemNSec ();				
-			if ( g_perfLevel < g_perfPrintLev ) {
-				PERF_PRINTF ( "%*s%s\n", g_perfLevel <<1, "", msg );
-				if ( g_perfFile != 0x0 ) fprintf ( g_perfFile, "%*s%s\n", g_perfLevel <<1, "", msg );
-			}
-		}
-		g_perfLevel++;
-	}
-}
-float PERF_POP ()
-{
-	if ( g_perfOn ) {
-		if ( g_perfGPU ) (*g_nvtxPop) ();
-		g_perfLevel--;
-		if ( g_perfCPU ) {
-			sjtime curr = Time::GetSystemNSec ();
-			curr -= g_perfStack [ g_perfLevel ];
-			float msec = float(curr) / MSEC_SCALAR;
-			if ( g_perfLevel < g_perfPrintLev ) {
-				PERF_PRINTF ( "%*s%s: %f ms\n", g_perfLevel <<1, "", g_perfMsg[g_perfLevel], msec );		
-				if ( g_perfFile != 0x0 ) fprintf ( g_perfFile, "%*s%s: %f ms\n", g_perfLevel <<1, "", g_perfMsg[g_perfLevel], msec );
-			}
-			return msec;
-		}
-	}
-	return 0.0;
-}
-
-void PERF_SET ( bool cpu, int lev, bool gpu, char* fname )
-{
-	g_perfCPU = cpu;
-	if ( lev == 0 ) lev = 32767;
-	g_perfPrintLev = lev;
-	g_perfGPU = gpu;		
-	g_perfFName = fname;	
-	if ( g_perfFName.length() > 0 ) {
-		if ( g_perfFile == 0x0 ) g_perfFile = fopen ( g_perfFName.c_str(), "wt" );
-	}	
-}
-
-void PERF_INIT ( bool bRequireDLL )
-{
-	g_perfInit = true;
-	g_perfOn = false;
-	g_perfLevel = 0;
-	
-	g_perfFile = 0x0;
-	g_perfFName = "";
-	
-	// Address of NV Perfmarker functions	
-	LoadLibrary (  TEXT("nvToolsExt32_1.dll") );  
-	HMODULE mod = GetModuleHandle( TEXT("nvToolsExt32_1.dll") );
-	g_nvtxPush = (nvtxRangePushFunc) GetProcAddress( mod, "nvtxRangePushA");
-	g_nvtxPop  = (nvtxRangePopFunc)  GetProcAddress( mod, "nvtxRangePop");
-
-	if ( g_nvtxPush != 0x0 && g_nvtxPop != 0x0 ) {
-		g_perfOn = true;
-		PERF_PRINTF ( "PERF_INIT: nvToolsExt32.dll found. Enabling CPU and GPU markers.\n" );
-	} else {		
-		if ( !bRequireDLL ) {
-			PERF_PRINTF ( "PERF_INIT: nvToolsExt32.dll not found. Doing CPU markers anyway.\n" );
-			g_perfOn = true;
-			g_perfGPU = false;
-		} else {
-			PERF_PRINTF ( "PERF_INIT: nvToolsExt32.dll not found. Disabled both CPU and GPU markers.\n" );
-		}
-	}
-
-	// Console window for CPU timings
-	if ( g_perfOn && g_perfCPU ) {
-		AllocConsole ();
-		long lStdHandle = (long) GetStdHandle( STD_OUTPUT_HANDLE );
-		int hConHandle = _open_osfhandle(lStdHandle, _O_TEXT);
-		g_perfCons = _fdopen( hConHandle, "w" );
-	}
-}
+//void PERF_INIT ( bool bRequireDLL )
+//{
+//	g_perfInit = true;
+//	g_perfOn = false;
+//	g_perfLevel = 0;
+//
+//	g_perfFile = 0x0;
+//	g_perfFName = "";
+//
+//	// Address of NV Perfmarker functions
+//	LoadLibrary (  TEXT("nvToolsExt32_1.dll") );
+//	HMODULE mod = GetModuleHandle( TEXT("nvToolsExt32_1.dll") );
+//	g_nvtxPush = (nvtxRangePushFunc) GetProcAddress( mod, "nvtxRangePushA");
+//	g_nvtxPop  = (nvtxRangePopFunc)  GetProcAddress( mod, "nvtxRangePop");
+//
+//	if ( g_nvtxPush != 0x0 && g_nvtxPop != 0x0 ) {
+//		g_perfOn = true;
+//		PERF_PRINTF ( "PERF_INIT: nvToolsExt32.dll found. Enabling CPU and GPU markers.\n" );
+//	} else {
+//		if ( !bRequireDLL ) {
+//			PERF_PRINTF ( "PERF_INIT: nvToolsExt32.dll not found. Doing CPU markers anyway.\n" );
+//			g_perfOn = true;
+//			g_perfGPU = false;
+//		} else {
+//			PERF_PRINTF ( "PERF_INIT: nvToolsExt32.dll not found. Disabled both CPU and GPU markers.\n" );
+//		}
+//	}
+//
+//	// Console window for CPU timings
+//	if ( g_perfOn && g_perfCPU ) {
+//		AllocConsole ();
+//		long lStdHandle = (long) GetStdHandle( STD_OUTPUT_HANDLE );
+//		int hConHandle = _open_osfhandle(lStdHandle, _O_TEXT);
+//		g_perfCons = _fdopen( hConHandle, "w" );
+//	}
+//}
 
 
 //---------------- TIMING CLASS

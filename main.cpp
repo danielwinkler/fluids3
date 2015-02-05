@@ -44,7 +44,11 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+
+#ifndef _WIN32
+#else
 #include <windows.h>
+#endif
 
 #include "app_opengl.h"
 #include "app_perf.h"
@@ -186,7 +190,11 @@ void drawScene ( float* viewmat, bool bShade )
 void drawInfo ()
 {
 	
+#ifndef _WIN32
+    time_t start, stop;
+#else
 	Time start, stop;
+#endif
 
 	glDisable ( GL_LIGHTING );  
 	glDisable ( GL_DEPTH_TEST );
@@ -246,7 +254,7 @@ int frame;
 
 void display () 
 {
-	PERF_PUSH ( "FRAME" );	
+//PERF_PUSH ( "FRAME" );	
 
 	// Check for slider interaction
 	if ( guiChanged(2) ) {	
@@ -262,7 +270,7 @@ void display ()
 	if ( !bPause ) psys.Run (window_width, window_height);
 	
 
-	PERF_PUSH ( "Render" );	
+//PERF_PUSH ( "Render" );	
 
 	frame++;
 	//measureFPS ();
@@ -288,9 +296,9 @@ void display ()
 	drawScene ( cam.getViewMatrix().GetDataF() , true );
 
 	// Draw 2D overlay
-	PERF_PUSH ( "DrawInfo" );
+//PERF_PUSH ( "DrawInfo" );
 	drawInfo ();
-	PERF_POP ();
+//PERF_POP ();
 
 	//if ( psys.GetToggle(PPROFILE) ) { rstop.SetSystemTime ( ACC_NSEC ); rstop = rstop - rstart; printf ( "RENDER: %s\n", rstop.GetReadableTime().c_str() ); }
  
@@ -299,13 +307,17 @@ void display ()
 	draw2D ();
 
 	// Swap buffers
+#ifndef _WIN32
+    glXSwapBuffers(dpy, win);
+#else
 	SwapBuffers ( g_hDC );
+#endif
 
-	PERF_POP ();
+//PERF_POP ();
 
 
-	frameTime = PERF_POP ();	
-	frameFPS = int(1000.0 / frameTime);
+//	frameTime = PERF_POP ();
+//	frameFPS = int(1000.0 / frameTime);
 }
 
 void reshape ( int width, int height ) 
@@ -599,8 +611,15 @@ void initialize ()
 		cudaInit ();
 	#endif
 
-	PERF_INIT ( true );
-	PERF_SET ( true, 0, true, "" );
+		GLenum err = glewInit();
+		if (GLEW_OK != err)
+		{
+		  /* Problem: glewInit failed, something is seriously wrong. */
+		  fprintf(stderr, "Error: %s\n", glewGetErrorString(err));
+		}
+
+//	PERF_INIT ( true );
+//	PERF_SET ( true, 0, true, "" );
 		
 	addGui (  20,   20, 200, 12, "Frame Time - FPS ",	GUI_PRINT,  GUI_INT,	&frameFPS, 0, 0 );					
 	addGui (  20,   35, 200, 12, "Frame Time - msec ",	GUI_PRINT,  GUI_FLOAT,	&frameTime, 0, 0 );							
@@ -624,4 +643,10 @@ void initialize ()
 void shutdown ()
 {
 	
+}
+
+int main()
+{
+    initialize();
+    shutdown();
 }

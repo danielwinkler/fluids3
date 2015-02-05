@@ -39,13 +39,17 @@
 
 */
 
+#ifdef WIN32
 #include <conio.h>
+#endif
 //#include <cutil.h>				// cutil32.lib
-#include <cutil_math.h>				// cutil32.lib
+#include "cutil_math.h"				// cutil32.lib
 #include <string.h>
 #include <assert.h>
 
+#ifdef WIN32
 #include <windows.h>
+#endif
 
 //#include <cuda_gl_interop.h>
 #include <stdio.h>
@@ -69,7 +73,7 @@ bool cudaCheck ( cudaError_t status, char* msg )
 		app_printf ( "CUDA ERROR: %s\n", cudaGetErrorString ( status ) );
 		app_getch ();
 
-		MessageBox ( NULL, cudaGetErrorString ( status), msg, MB_OK );
+//		MessageBox ( NULL, cudaGetErrorString ( status), msg, MB_OK );
 		return false;
 	} else {
 		//app_printf ( "%s. OK.\n", msg );

@@ -41,7 +41,11 @@
 
 #include <assert.h>
 #include <stdio.h>
+#ifdef _WIN32
 #include <conio.h>
+#else
+#include <unistd.h>
+#endif
 
 #include "app_perf.h"
 #include "fluid_defs.h"
@@ -144,11 +148,19 @@ void FluidSystem::Setup ( bool bStart )
 
 		FluidClearCUDA ();
 
-		Sleep ( 500 );
+#ifndef _WIN32
+		sleep ( 500 );
+#else
+        Sleep ( 500 );
+#endif
 		
 		FluidSetupCUDA ( NumPoints(), m_GridSrch, *(int3*)& m_GridRes, *(float3*)& m_GridSize, *(float3*)& m_GridDelta, *(float3*)& m_GridMin, *(float3*)& m_GridMax, m_GridTotal, (int) m_Vec[PEMIT_RATE].x );
 
-		Sleep ( 500 );
+#ifndef _WIN32
+        sleep ( 500 );
+#else
+        Sleep ( 500 );
+#endif
 
 		Vector3DF grav = m_Vec[PPLANE_GRAV_DIR];
 		FluidParamCUDA ( m_Param[PSIMSCALE], m_Param[PSMOOTHRADIUS], m_Param[PRADIUS], m_Param[PMASS], m_Param[PRESTDENSITY], *(float3*)& m_Vec[PBOUNDMIN], *(float3*)& m_Vec[PBOUNDMAX], m_Param[PEXTSTIFF], m_Param[PINTSTIFF], m_Param[PVISC], m_Param[PEXTDAMP], m_Param[PFORCE_MIN], m_Param[PFORCE_MAX], m_Param[PFORCE_FREQ], m_Param[PGROUND_SLOPE], grav.x, grav.y, grav.z, m_Param[PACCEL_LIMIT], m_Param[PVEL_LIMIT] );
@@ -491,24 +503,24 @@ void FluidSystem::RunSimulateCPUGrid ()
 {
 	Time start;
 	start.SetSystemTime ();
-	PERF_PUSH ( "InsertCPU" );
+//PERF_PUSH ( "InsertCPU" );
 	InsertParticles ();
-	PERF_POP ();
+//PERF_POP ();
 	record ( PTIME_INSERT, "Insert CPU", start );			
 	start.SetSystemTime ();
-	PERF_PUSH ( "PressCPU" );
+//PERF_PUSH ( "PressCPU" );
 	ComputePressureGrid ();
-	PERF_POP ();
+//PERF_POP ();
 	record ( PTIME_PRESS, "Press CPU", start );
 	start.SetSystemTime ();
-	PERF_PUSH ( "ForceCPU" );
+//PERF_PUSH ( "ForceCPU" );
 	ComputeForceGrid ();
-	PERF_POP ();
+//PERF_POP ();
 	record ( PTIME_FORCE, "Force CPU", start );
 	start.SetSystemTime ();
-	PERF_PUSH ( "AdvanceCPU" );
+//PERF_PUSH ( "AdvanceCPU" );
 	Advance ();
-	PERF_POP ();
+//PERF_POP ();
 	record ( PTIME_ADVANCE, "Advance CPU", start );
 }
 
@@ -522,35 +534,35 @@ void FluidSystem::RunSimulateCUDAIndex ()
 	Time start;
 	start.SetSystemTime ();
 	
-	PERF_PUSH ( "InsertCUDA" );
+//PERF_PUSH ( "InsertCUDA" );
 	InsertParticlesCUDA ( 0x0, 0x0, 0x0 );
 	record ( PTIME_INSERT, "Insert CUDA", start );			
 	start.SetSystemTime ();
-	PERF_POP ();
+//PERF_POP ();
 	
-	PERF_PUSH ( "SortCUDA" );
+//PERF_PUSH ( "SortCUDA" );
 	PrefixSumCellsCUDA ( 0x0 );
 	CountingSortIndexCUDA ( 0x0 );
 	record ( PTIME_SORT, "Index Sort CUDA", start );
 	start.SetSystemTime ();
-	PERF_POP ();
+//PERF_POP ();
 	
-	PERF_PUSH ( "PressureCUDA" );
+//PERF_PUSH ( "PressureCUDA" );
 	ComputePressureCUDA();
 	record ( PTIME_PRESS, "Press CUDA", start );		
 	start.SetSystemTime ();
-	PERF_POP ();
+//PERF_POP ();
 	
-	PERF_PUSH ( "ForceCUDA" );
+//PERF_PUSH ( "ForceCUDA" );
 	ComputeForceCUDA ();	
 	record ( PTIME_FORCE, "Force CUDA", start );
 	start.SetSystemTime ();
-	PERF_POP ();
+//PERF_POP ();
 
-	PERF_PUSH ( "AdvanceCUDA" );
+//PERF_PUSH ( "AdvanceCUDA" );
 	AdvanceCUDA ( m_Time, m_DT, m_Param[PSIMSCALE] );			
 	record ( PTIME_ADVANCE, "Advance CUDA", start );
-	PERF_POP ();
+//PERF_POP ();
 
 	TransferFromCUDA ();	// return for rendering			
 }
@@ -560,35 +572,35 @@ void FluidSystem::RunSimulateCUDAFull ()
 	Time start;
 	start.SetSystemTime ();
 
-	PERF_PUSH ( "InsertCUDA" );
+//PERF_PUSH ( "InsertCUDA" );
 	InsertParticlesCUDA ( 0x0, 0x0, 0x0 );
 	record ( PTIME_INSERT, "Insert CUDA", start );			
-	PERF_POP ();
+//PERF_POP ();
 	
-	PERF_PUSH ( "SortCUDA" );
+//PERF_PUSH ( "SortCUDA" );
 	start.SetSystemTime ();
 	PrefixSumCellsCUDA ( 0x0 );
 	CountingSortFullCUDA ( 0x0 );	
 	record ( PTIME_SORT, "Full Sort CUDA", start );
-	PERF_POP ();
+//PERF_POP ();
 	
-	PERF_PUSH ( "PressureCUDA" );
+//PERF_PUSH ( "PressureCUDA" );
 	start.SetSystemTime ();
 	ComputePressureCUDA();
 	record ( PTIME_PRESS, "Press CUDA", start );		
-	PERF_POP ();
+//PERF_POP ();
 
-	PERF_PUSH ( "ForceCUDA" );
+//PERF_PUSH ( "ForceCUDA" );
 	start.SetSystemTime ();
 	ComputeForceCUDA ();	
 	record ( PTIME_FORCE, "Force CUDA", start );
-	PERF_POP ();
+//PERF_POP ();
 
-	PERF_PUSH ( "AdvanceCUDA" );
+//PERF_PUSH ( "AdvanceCUDA" );
 	start.SetSystemTime ();	
 	AdvanceCUDA ( m_Time, m_DT, m_Param[PSIMSCALE] );			
 	record ( PTIME_ADVANCE, "Advance CUDA", start );
-	PERF_POP ();
+//PERF_POP ();
 
 	TransferFromCUDA ();	// return for rendering			
 }
@@ -2448,7 +2460,7 @@ void FluidSystem::TestPrefixSum ( int num )
 	}
 	app_printf ( "Validate: %d OK. (Bad: %d)\n", ok, num-ok );
 	app_printf ( "Press any key to continue..\n");
-	_getch();
+	getchar();
 }
 
 

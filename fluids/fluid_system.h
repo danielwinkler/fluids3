@@ -160,7 +160,7 @@
 		float			density;		// 52
 		int				grid_cell;		// 56
 		int				grid_next;		// 60
-		DWORD			clr;			// 64
+		unsigned int    clr;			// 64
 		int				padding;		// 68
 	};
 
@@ -289,7 +289,7 @@
 		float IncParam ( int p, float v, float mn, float mx )	{ 
 			m_Param[p] += v; 
 			if ( m_Param[p] < mn ) m_Param[p] = mn; 
-			if ( m_Param[p] > mx ) m_Param[p] = mn; 
+			if ( m_Param[p] > mx ) m_Param[p] = mx;
 			return m_Param[p];
 		}
 		Vector3DF GetVec ( int p )			{ return m_Vec[p]; }
@@ -320,7 +320,7 @@
 		int						mMaxPoints;
 		int						mGoodPoints;
 		Vector3DF*				mPos;
-		DWORD*					mClr;
+		unsigned int*			mClr;
 		Vector3DF*				mVel;
 		Vector3DF*				mVelEval;
 		unsigned short*			mAge;

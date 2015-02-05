@@ -30,24 +30,44 @@
  *
  */
 
-#include "GLEW\glew.h"
+#include "GLEW/glew.h"
 
 #define GLCOMPAT
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "GLEW\glew.h"
+#include "GLEW/glew.h"
 #ifdef _WIN32
-	#include "GLEW\wglew.h"
+	#include "GLEW/wglew.h"
 #else
-	#include "GLEW\glxew.h"
+    #define Time TimeTemp
+	#include "GLEW/glxew.h"
+    #undef Time
 #endif
 
+
+#ifndef _WIN32
+#include <sys/io.h>
+#include <cstdarg>
+#include <stdarg.h>
+
+
+#include <GL/glx.h>
+#include <GL/gl.h>
+#include <unistd.h>
+#include <iostream>
+#include <GL/gl.h>
+#include <GL/glx.h>
+#include <GL/glxext.h>
+#include <X11/Xatom.h>
+#include <X11/Xutil.h>
+#else
 #include <windows.h>
 #include <windowsx.h>
 #include <io.h>
-#include <fcntl.h>	
 #include <conio.h>
+#endif
+#include <fcntl.h>	
 #include <stdlib.h>
 #include <stdio.h>
 
@@ -71,9 +91,15 @@ extern void shutdown ();
 //------------------------------------------------------------------------------------
 // Global Variables
 //--------------------------------------------------------------------------------------
+#ifndef _WIN32
+Display *dpy       = NULL;
+GLXContext ctx       = NULL;
+Window win;
+#else
 HDC         g_hDC       = NULL;
 HGLRC       g_hRC       = NULL;
 HWND        g_hWnd      = NULL;
+#endif
 bool		g_bCtrl	= false;
 bool		g_bShift = false;
 float		window_width  = 1024;
@@ -89,9 +115,11 @@ void app_printf ( char* format, ... )
 	// The function vfprintf was specially designed to allow this.
 	va_list argptr;
 	va_start (argptr, format);				
-	vfprintf ( m_OutCons, format, argptr);			
+//    vfprintf ( m_OutCons, format, argptr);
+    vprintf ( format, argptr);
 	va_end (argptr);			
-	fflush ( m_OutCons );
+//	fflush ( m_OutCons );
+	fflush (stdout);
 }
 void app_printEXIT ( char* format, ... )
 {
@@ -100,17 +128,20 @@ void app_printEXIT ( char* format, ... )
 	// The function vfprintf was specially designed to allow this.
 	va_list argptr;
 	va_start (argptr, format);				
-	vfprintf ( m_OutCons, format, argptr);			
+	//  vfprintf ( m_OutCons, format, argptr);
+	vprintf ( format, argptr);
 	va_end (argptr);			
-	fflush ( m_OutCons );
+//	fflush ( m_OutCons );
+    fflush (stdout);
 
-	_getch();
+	getchar();
 	exit(-1);
 }
 char app_getch ()
 {
 	char ch = 0;
-	fscanf ( m_OutCons, "%c", &ch );
+//    fscanf ( m_OutCons, "%c", &ch );
+    scanf ( "%c", &ch );
 	return ch;
 }
 
@@ -122,7 +153,7 @@ void checkGL( char* msg )
 	app_printf ( "%s\n", msg);
 	if (errCode != GL_NO_ERROR) {
 		//app_printf ( " ERROR: %s\n", gluErrorString(errCode) );
-		_getch();
+		getchar();
 		exit( errCode );
 	}
 }
@@ -132,7 +163,7 @@ void checkGL( char* msg )
 
 //------------------------------------------------------------------------------
 
-void APIENTRY glErrorCallback (  GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, GLvoid* userParam)
+void glErrorCallback (  GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, GLvoid* userParam)
 {
     char *strSource = "0";
     char *strType = strSource;
@@ -163,12 +194,61 @@ void APIENTRY glErrorCallback (  GLenum source, GLenum type, GLuint id, GLenum s
 
 bool InitGL ()
 {
-    int pixelFormat;
-	UINT numFormats;
-	float fAttributes[] = {0,0};
 
-	
-	PIXELFORMATDESCRIPTOR pfd;
+#ifndef _WIN32
+	dpy = XOpenDisplay(0);
+
+    int nelements;
+    GLXFBConfig *fbc = glXChooseFBConfig(dpy, DefaultScreen(dpy), 0, &nelements);
+
+    static int attributeList[] = { GLX_RGBA, GLX_DOUBLEBUFFER, GLX_RED_SIZE, 1, GLX_GREEN_SIZE, 1, GLX_BLUE_SIZE, 1, None };
+    XVisualInfo *vi = glXChooseVisual(dpy, DefaultScreen(dpy),attributeList);
+
+    XSetWindowAttributes swa;
+    swa.colormap = XCreateColormap(dpy, RootWindow(dpy, vi->screen), vi->visual, AllocNone);
+    swa.border_pixel = 0;
+    swa.event_mask = StructureNotifyMask;
+    win = XCreateWindow(dpy, RootWindow(dpy, vi->screen), 0, 0, 100, 100, 0, vi->depth, InputOutput, vi->visual, CWBorderPixel|CWColormap|CWEventMask, &swa);
+
+    XMapWindow (dpy, win);
+
+    //oldstyle context:
+    //  GLXContext ctx = glXCreateContext(dpy, vi, 0, GL_TRUE);
+
+//    std::cout << "glXCreateContextAttribsARB " << (void*) glXGetProcAddress((const GLubyte*)"glXCreateContextAttribsARB") << std::endl;
+    typedef GLXContext (*glXCreateContextAttribsARBProc)(Display*, GLXFBConfig, GLXContext, Bool, const int*);
+    glXCreateContextAttribsARBProc glXCreateContextAttribsARB = (glXCreateContextAttribsARBProc) glXGetProcAddress((const GLubyte*)"glXCreateContextAttribsARB");
+
+    int attribs[] = {
+    GLX_CONTEXT_MAJOR_VERSION_ARB, 3,
+    GLX_CONTEXT_MINOR_VERSION_ARB, 0,
+    0};
+
+    ctx = glXCreateContextAttribsARB(dpy, *fbc, 0, true, attribs);
+
+    glXMakeCurrent (dpy, win, ctx);
+
+    glClearColor (0, 0.5, 1, 1);
+    glClear (GL_COLOR_BUFFER_BIT);
+    glXSwapBuffers (dpy, win);
+
+    sleep(1);
+
+    glClearColor (1, 0.5, 0, 1);
+    glClear (GL_COLOR_BUFFER_BIT);
+    glXSwapBuffers (dpy, win);
+
+    sleep(1);
+
+    ctx = glXGetCurrentContext();
+    glXDestroyContext(dpy, ctx);
+#else
+    int pixelFormat;
+    UINT numFormats;
+    float fAttributes[] = {0,0};
+
+
+    PIXELFORMATDESCRIPTOR pfd;
     memset(&pfd, 0, sizeof(PIXELFORMATDESCRIPTOR));
 
     pfd.nSize      = sizeof(PIXELFORMATDESCRIPTOR);
@@ -177,9 +257,9 @@ bool InitGL ()
     pfd.iPixelType = PFD_TYPE_RGBA;
     pfd.cColorBits = 32;
     pfd.cDepthBits = 24;
-    pfd.cStencilBits = 8;	
+    pfd.cStencilBits = 8;
 
-	int iAttributes[] = { WGL_DRAW_TO_WINDOW_ARB,GL_TRUE,
+    int iAttributes[] = { WGL_DRAW_TO_WINDOW_ARB,GL_TRUE,
         WGL_SUPPORT_OPENGL_ARB,GL_TRUE,
         WGL_ACCELERATION_ARB,WGL_FULL_ACCELERATION_ARB,
         WGL_COLOR_BITS_ARB,32,
@@ -264,13 +344,15 @@ bool InitGL ()
             }
 #endif
         }
-    }        
+    }
+#endif
 
 
 
     return true;
 }
 
+#ifdef _WIN32
 LRESULT CALLBACK WinProc( HWND   hWnd, UINT   msg, WPARAM wParam, LPARAM lParam )
 {  
 	PAINTSTRUCT ps;
@@ -407,6 +489,7 @@ int WINAPI WinMain ( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     return (int) msg.wParam;
 }
+#endif
 
 
 #ifdef USE_GLUT
